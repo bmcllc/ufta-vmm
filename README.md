@@ -340,8 +340,3 @@ The formalization follows the UFTA-VMM specification:
 - **Bandwidth budget**: B_alloc = min(B_max, β, B_budget)
 - **Adaptive error**: E_p(t) = ‖σ̂(t+τ) - σ̂_pred(t+τ)‖
 
-## Targets
-
-- **Linux**: Primary target, .vmem files on ext4/btrfs
-- **N64**: Future target, RDRAM ↔ ROM/DMA mapping
-- **GPU**: VRAM tier with staging buffer support
