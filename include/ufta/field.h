@@ -62,6 +62,12 @@ real_t op_diffusion(vec3_t sigma, vec3_t force, real_t dt);
 /* Control operator: stabilization / correction */
 real_t op_control(vec3_t sigma, vec3_t force, real_t dt);
 
+/* Cosmic operators */
+real_t op_blackhole(vec3_t sigma, vec3_t force, real_t dt);
+real_t op_whitehole(vec3_t sigma, vec3_t force, real_t dt);
+real_t op_vortex(vec3_t sigma, vec3_t force, real_t dt);
+real_t op_wave(vec3_t sigma, vec3_t force, real_t dt);
+
 /* ── API ──────────────────────────────────────────────────────── */
 
 /* Initialize field engine with defaults */

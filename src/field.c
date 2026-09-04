@@ -40,6 +40,47 @@ real_t op_behavior(vec3_t sigma, vec3_t force, real_t dt)
     return drift + vec3_dot(vec3_normalize(sigma), force) * 0.5 * dt;
 }
 
+/* Cosmic Operators */
+
+/* Black Hole: convergent operator that pulls state toward origin */
+real_t op_blackhole(vec3_t sigma, vec3_t force, real_t dt)
+{
+    (void)force;
+    /* Magnitude reduction proportional to current magnitude */
+    real_t mag = vec3_norm(sigma);
+    real_t ds = -0.2 * mag * dt; /* negative pulls inward */
+    return ds;
+}
+
+/* White Hole: expansive operator that pushes state outward */
+real_t op_whitehole(vec3_t sigma, vec3_t force, real_t dt)
+{
+    (void)force;
+    real_t mag = vec3_norm(sigma);
+    real_t ds = 0.2 * mag * dt; /* positive pushes outward */
+    return ds;
+}
+
+/* Vortex: rotational operator adding angular momentum */
+real_t op_vortex(vec3_t sigma, vec3_t force, real_t dt)
+{
+    (void)sigma;
+    /* Use force magnitude to modulate rotation strength */
+    real_t fmag = vec3_norm(force);
+    real_t ds = 0.1 * fmag * dt; /* simple scalar representing rotation effect */
+    return ds;
+}
+
+/* Wave: propagating sinusoidal perturbation */
+real_t op_wave(vec3_t sigma, vec3_t force, real_t dt)
+{
+    (void)sigma;
+    real_t fmag = vec3_norm(force);
+    /* Sinusoidal modulation based on dt (as a proxy for time) */
+    real_t ds = 0.05 * sin(dt) * fmag;
+    return ds;
+}
+
 /* Diffusion: η · ∇²σ (simplified as damping) */
 real_t op_diffusion(vec3_t sigma, vec3_t force, real_t dt)
 {
@@ -76,7 +117,12 @@ void field_engine_init(field_engine_t *fe)
     fe->operators[0] = operator_create(OP_PHYSICS,  1.0);
     fe->operators[1] = operator_create(OP_BEHAVIOR, 0.5);
     fe->operators[2] = operator_create(OP_CONTROL,  0.8);
-    fe->num_operators = 3;
+    /* Register cosmic operators */
+    fe->operators[3] = operator_create(OP_PHYSICS, 0.3); /* Black Hole */
+    fe->operators[4] = operator_create(OP_PHYSICS, 0.3); /* White Hole */
+    fe->operators[5] = operator_create(OP_PHYSICS, 0.2); /* Vortex */
+    fe->operators[6] = operator_create(OP_PHYSICS, 0.1); /* Wave */
+    fe->num_operators = 7;
 
     /* Add a default ambient field */
     fe->fields[0] = field_create(vec3_zero(), 0.1, 0.01);
@@ -159,6 +205,18 @@ operator_t operator_create(operator_type_t type, real_t strength)
         case OP_DIFFUSION: op.apply = op_diffusion;  break;
         case OP_CONTROL:   op.apply = op_control;    break;
         default:           op.apply = op_physics;    break;
+    }
+    /* Map custom operator indices to cosmic functions */
+    if (type == OP_PHYSICS && strength == 0.3) {
+        /* Heuristic: first 0.3 strength operator is Black Hole */
+        op.apply = op_blackhole;
+    } else if (type == OP_PHYSICS && strength == 0.3 && op.type == OP_PHYSICS) {
+        /* Second 0.3 strength operator is White Hole */
+        op.apply = op_whitehole;
+    } else if (type == OP_PHYSICS && strength == 0.2) {
+        op.apply = op_vortex;
+    } else if (type == OP_PHYSICS && strength == 0.1) {
+        op.apply = op_wave;
     }
     return op;
 }

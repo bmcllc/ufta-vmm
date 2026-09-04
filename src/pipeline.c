@@ -103,21 +103,39 @@ void pipeline_predict(runtime_t *rt)
     rt->metrics.duration_us[STEP_PREDICT] = elapsed_us(t0, now_ns());
 }
 
-/* Step 4: Prioritize — compute priority π_p for all pages */
+/* Step 4: Prioritize — compute priority π_p for all pages using relativistic weighting */
 void pipeline_prioritize(runtime_t *rt)
 {
     uint64_t t0 = now_ns();
 
-    /* Update bandwidth weights based on page priorities */
+    /* First pass: determine maximum page speed for Lorentz factor normalization */
+    real_t max_speed = 0.0;
+    for (uint32_t i = 0; i < rt->pages->count; i++) {
+        page_t *p = &rt->pages->pages[i];
+        if (p->motion.speed > max_speed) {
+            max_speed = p->motion.speed;
+        }
+    }
+    if (max_speed < 1e-12) max_speed = 1.0; /* avoid division by zero */
+
+    /* Update bandwidth weights based on relativistically weighted page priorities */
     for (int c = 0; c < rt->bandwidth->num_channels; c++) {
         channel_t *ch = &rt->bandwidth->channels[c];
         real_t total_weight = 0.0;
 
-        /* Sum heat of pages on this channel's tier */
+        /* Sum relativistically weighted heat of pages on this channel's tier */
         for (uint32_t i = 0; i < rt->pages->count; i++) {
             page_t *p = &rt->pages->pages[i];
             if (p->tier_id == ch->tier_id) {
-                total_weight += p->heat.value;
+                /* Get prediction state for relativistic priority calculation */
+                pred_state_t *ps = predictor_get(rt->predictor, p->id);
+                if (ps) {
+                    real_t rel_priority = relativistic_priority(ps, p->heat.value, max_speed);
+                    total_weight += rel_priority;
+                } else {
+                    /* Fallback to heat if no prediction state */
+                    total_weight += p->heat.value;
+                }
             }
         }
 

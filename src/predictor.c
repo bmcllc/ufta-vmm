@@ -33,6 +33,40 @@ mat3_t build_rotation(const real_t theta[3])
     return mat3_mul(Rz, mat3_mul(Ry, Rx));
 }
 
+/* ── Relativistic Scheduler: Lorentz factor ───────────────────── */
+
+/* Compute Lorentz factor γ = 1 / sqrt(1 - β²) where β = v / v_max */
+real_t lorentz_factor(real_t speed, real_t max_speed)
+{
+    if (max_speed < 1e-12) return 1.0;
+    real_t beta = speed / max_speed;
+    if (beta > 0.9999) beta = 0.9999; /* clamp to avoid singularity */
+    if (beta < 0.0) beta = 0.0;
+    return 1.0 / sqrt(1.0 - beta * beta);
+}
+
+/* Compute relativistic priority: P_i = γ_i · R_i · G_i - C_i */
+real_t relativistic_priority(const pred_state_t *ps, real_t heat, real_t max_speed)
+{
+    real_t gamma = lorentz_factor(ps->last_velocity.x, max_speed);
+    /* R_i: prediction reliability (confidence) */
+    real_t R_i = ps->confidence;
+    /* G_i: gain factor from prediction accuracy (inverse of error) */
+    real_t G_i = 1.0 / (1.0 + ps->error_ema);
+    /* C_i: cost factor (temporal dilation for quiet pages) */
+    real_t C_i = 0.0;
+    /* Temporal dilation: quiet pages (low velocity) get dilated time */
+    real_t beta = ps->last_velocity.x / max_speed;
+    if (beta < 0.0) beta = 0.0;
+    if (beta > 0.9999) beta = 0.9999;
+    real_t time_dilation = 1.0 / lorentz_factor(ps->last_velocity.x, max_speed);
+    C_i = (1.0 - time_dilation) * 0.5; /* cost increases for slow pages */
+
+    /* Relativistic priority: P_i = γ_i · R_i · G_i · H_i - C_i */
+    /* Heat (H_i) modulates the priority — hot pages get amplified */
+    return gamma * R_i * G_i * heat - C_i;
+}
+
 /* ── Predictor initialization ─────────────────────────────────── */
 
 void predictor_init(predictor_t *pred)

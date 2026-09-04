@@ -92,4 +92,12 @@ mat3_t build_rotation(const real_t theta[3]);
 void predictor_lms_update(pred_state_t *ps, const vec3_t *observed,
                           real_t learning_rate, real_t momentum);
 
+/* ── Relativistic Scheduler ───────────────────────────────────── */
+
+/* Compute Lorentz factor γ = 1 / sqrt(1 - β²) where β = v / v_max */
+real_t lorentz_factor(real_t speed, real_t max_speed);
+
+/* Compute relativistic priority: P_i = γ_i · R_i · G_i - C_i */
+real_t relativistic_priority(const pred_state_t *ps, real_t heat, real_t max_speed);
+
 #endif /* UFTA_PREDICTOR_H */
