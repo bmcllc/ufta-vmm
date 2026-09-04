@@ -1,0 +1,26 @@
+# Build artifacts
+build/
+build-win/
+dist/
+*.o
+*.exe
+uvm
+uvm-gui
+uvm-cuda
+uvm-debug
+*.run
+*.zip
+*.tar.gz
+*.deb
+
+# SDL2 third-party (baixado pelo CI)
+third_party/
+
+# Editor
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,50 @@
+# ═══════════════════════════════════════════════════════════════
+#  UFTA-VMM — Windows Build (MinGW-w64)
+#  Usage:  mingw32-make -f Makefile.windows
+#  Produces: uvm.exe, uvm-gui.exe
+# ═══════════════════════════════════════════════════════════════
+
+CC       = gcc
+CFLAGS   = -Wall -Wextra -Werror -std=c11
+CFLAGS  += -Iinclude
+CFLAGS  += -O2
+LDFLAGS  = -lm
+
+# SDL2 (adjust SDL2DIR to your SDL2-devel-mingw path)
+SDL2DIR  ?= third_party/SDL2
+GUI_CFLAGS  = -I$(SDL2DIR)/include
+GUI_LDFLAGS = -L$(SDL2DIR)/lib/x64 -lmingw32 -lSDL2main -lSDL2 -lopengl32 -mwindows
+
+SRCDIR   = src
+BUILDDIR = build-win
+
+# CPU sources (exclude .cu files, exclude gui.c — use stub instead)
+SOURCES  = $(filter-out %.cu, $(wildcard $(SRCDIR)/*.c))
+CORE_SOURCES = $(filter-out $(SRCDIR)/gui.c, $(SOURCES))
+CORE_OBJECTS = $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(CORE_SOURCES))
+TARGET   = uvm.exe
+GUI_TARGET = uvm-gui.exe
+
+.PHONY: all clean gui
+
+all: $(TARGET)
+
+$(TARGET): $(CORE_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BUILDDIR):
+	mkdir -p $(BUILDDIR)
+
+gui: $(CORE_OBJECTS) $(BUILDDIR)/gui.o
+	$(CC) $(CFLAGS) $(GUI_CFLAGS) -o $(GUI_TARGET) \
+	    $(filter-out $(BUILDDIR)/gui_stub.o,$(CORE_OBJECTS)) \
+	    $(BUILDDIR)/gui.o $(LDFLAGS) $(GUI_LDFLAGS)
+
+$(BUILDDIR)/gui.o: $(SRCDIR)/gui.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $(GUI_CFLAGS) -c -o $@ $<
+
+clean:
+	rm -rf $(BUILDDIR) $(TARGET) $(GUI_TARGET)
