@@ -118,10 +118,10 @@ void field_engine_init(field_engine_t *fe)
     fe->operators[1] = operator_create(OP_BEHAVIOR, 0.5);
     fe->operators[2] = operator_create(OP_CONTROL,  0.8);
     /* Register cosmic operators */
-    fe->operators[3] = operator_create(OP_PHYSICS, 0.3); /* Black Hole */
-    fe->operators[4] = operator_create(OP_PHYSICS, 0.3); /* White Hole */
-    fe->operators[5] = operator_create(OP_PHYSICS, 0.2); /* Vortex */
-    fe->operators[6] = operator_create(OP_PHYSICS, 0.1); /* Wave */
+    fe->operators[3] = operator_create(OP_BLACKHOLE, 0.3);
+    fe->operators[4] = operator_create(OP_WHITEHOLE, 0.3);
+    fe->operators[5] = operator_create(OP_VORTEX,    0.2);
+    fe->operators[6] = operator_create(OP_WAVE,      0.1);
     fe->num_operators = 7;
 
     /* Add a default ambient field */
@@ -204,19 +204,12 @@ operator_t operator_create(operator_type_t type, real_t strength)
         case OP_BEHAVIOR:  op.apply = op_behavior;   break;
         case OP_DIFFUSION: op.apply = op_diffusion;  break;
         case OP_CONTROL:   op.apply = op_control;    break;
+        case OP_BLACKHOLE: op.apply = op_blackhole; break;
+        case OP_WHITEHOLE: op.apply = op_whitehole; break;
+        case OP_VORTEX:    op.apply = op_vortex;    break;
+        case OP_WAVE:      op.apply = op_wave;      break;
         default:           op.apply = op_physics;    break;
     }
-    /* Map custom operator indices to cosmic functions */
-    if (type == OP_PHYSICS && strength == 0.3) {
-        /* Heuristic: first 0.3 strength operator is Black Hole */
-        op.apply = op_blackhole;
-    } else if (type == OP_PHYSICS && strength == 0.3 && op.type == OP_PHYSICS) {
-        /* Second 0.3 strength operator is White Hole */
-        op.apply = op_whitehole;
-    } else if (type == OP_PHYSICS && strength == 0.2) {
-        op.apply = op_vortex;
-    } else if (type == OP_PHYSICS && strength == 0.1) {
-        op.apply = op_wave;
-    }
+    /* No longer need heuristic mapping based on strength */
     return op;
 }

@@ -116,7 +116,12 @@ typedef enum {
     OP_AI          = (1 << 1),
     OP_BEHAVIOR    = (1 << 2),
     OP_DIFFUSION   = (1 << 3),
-    OP_CONTROL     = (1 << 4)
+    OP_CONTROL     = (1 << 4),
+    /* Cosmic operators */
+    OP_BLACKHOLE   = (1 << 5),
+    OP_WHITEHOLE   = (1 << 6),
+    OP_VORTEX      = (1 << 7),
+    OP_WAVE        = (1 << 8)
 } operator_type_t;
 
 /* ── Status codes ─────────────────────────────────────────────── */
