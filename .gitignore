@@ -16,6 +16,12 @@ uvm-debug
 # SDL2 third-party (baixado pelo CI)
 third_party/
 
+# Descrições do itch.io (geradas localmente)
+packaging/itch/description-itch.md
+packaging/itch/description-itch-en.md
+packaging/itch/description-short.txt
+packaging/itch/README-itch.txt
+
 # Editor
 .vscode/
 *.swp

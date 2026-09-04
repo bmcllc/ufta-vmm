@@ -4,16 +4,16 @@
 #  Produces: uvm.exe, uvm-gui.exe
 # ═══════════════════════════════════════════════════════════════
 
-CC       = gcc
-CFLAGS   = -Wall -Wextra -Werror -std=c11
+CC       = x86_64-w64-mingw32-gcc
+CFLAGS   = -Wall -Wextra -std=c11 -D_GNU_SOURCE
 CFLAGS  += -Iinclude
 CFLAGS  += -O2
-LDFLAGS  = -lm
+LDFLAGS  = -lm -lpthread
 
 # SDL2 (adjust SDL2DIR to your SDL2-devel-mingw path)
 SDL2DIR  ?= third_party/SDL2
-GUI_CFLAGS  = -I$(SDL2DIR)/include
-GUI_LDFLAGS = -L$(SDL2DIR)/lib/x64 -lmingw32 -lSDL2main -lSDL2 -lopengl32 -mwindows
+GUI_CFLAGS  = -I$(SDL2DIR)/x86_64-w64-mingw32/include
+GUI_LDFLAGS = -L$(SDL2DIR)/x86_64-w64-mingw32/lib -lmingw32 -lSDL2main -lSDL2 -lopengl32 -mwindows
 
 SRCDIR   = src
 BUILDDIR = build-win

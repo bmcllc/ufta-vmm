@@ -5,10 +5,10 @@
  */
 
 #include "ufta/pipeline.h"
+#include "ufta/platform.h"
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
-#include <unistd.h>
 
 
 /* ── High-resolution timestamp ────────────────────────────────── */

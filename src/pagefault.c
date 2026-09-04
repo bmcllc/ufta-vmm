@@ -16,16 +16,22 @@
 #define _GNU_SOURCE
 #endif
 #include "ufta/pagefault.h"
+#include "ufta/platform.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <time.h>
+
+#ifdef _WIN32
+#include <direct.h>
+#else
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <errno.h>
-#include <time.h>
+#endif
 
 /* ── Global context (for signal handler) ──────────────────────── */
 
@@ -40,7 +46,7 @@ static uint64_t pf_now_ns(void)
     return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
 }
 
-/* ── Signal handler ─────────────────────────────────────────────
+/* ── Signal handler / VEH handler ────────────────────────────────
  *
  * LIGHTWEIGHT handler: it does NOT perform any data transfer or
  * CUDA/OS calls (which are not async-signal-safe). Instead it:
@@ -50,24 +56,25 @@ static uint64_t pf_now_ns(void)
  *
  * This eliminates the deadlock/UB risk of calling cudaMemcpy inside
  * a signal context and moves the heavy lifting off the hot path.
+ *
+ * Cross-platform: on Linux this is a sigaction handler; on Windows
+ * it is called from the VEH handler defined in platform.h.
  */
-static void pf_sigsegv_handler(int sig, siginfo_t *info, void *ctx_raw)
+static void pf_handle_fault(void *fault_addr)
 {
-    (void)sig;
-    (void)ctx_raw;
-
     /* Re-entrancy guard */
     if (!g_pf_ctx || g_pf_ctx->fault_in_progress) {
-        /* Can't handle — re-crash with default handler */
+#ifndef _WIN32
+        /* On Linux, restore default handler so we re-crash cleanly */
         struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
         sa.sa_handler = SIG_DFL;
         sigaction(SIGSEGV, &sa, NULL);
+#endif
         return;
     }
     g_pf_ctx->fault_in_progress = true;
 
-    /* Faulting address */
-    void *fault_addr = info->si_addr;
     pf_context_t *pf = g_pf_ctx;
 
     /* Is the fault within our region? */
@@ -167,12 +174,33 @@ static void pf_sigsegv_handler(int sig, siginfo_t *info, void *ctx_raw)
 
 re_crash:
     g_pf_ctx->fault_in_progress = false;
+#ifndef _WIN32
     {
         struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
         sa.sa_handler = SIG_DFL;
         sigaction(SIGSEGV, &sa, NULL);
     }
+#endif
 }
+
+/* ── Platform-specific wrappers ───────────────────────────────── */
+
+#ifdef _WIN32
+/* Windows VEH handler — called from ufta_veh_handler() in platform.h */
+void ufta_win32_pagefault_handler(void *fault_addr)
+{
+    pf_handle_fault(fault_addr);
+}
+#else
+/* Linux signal handler wrapper */
+static void pf_sigsegv_handler(int sig, siginfo_t *info, void *ctx_raw)
+{
+    (void)sig;
+    (void)ctx_raw;
+    pf_handle_fault(info->si_addr);
+}
+#endif
 
 /* ── Worker batch load callback ─────────────────────────────────
  *
@@ -342,19 +370,37 @@ static int pf_init_common(pf_context_t *ctx, uint32_t page_size,
         ctx->pages[i].valid = false;
     }
 
-    /* Install SIGSEGV handler */
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_sigaction = pf_sigsegv_handler;
-    sa.sa_flags = SA_SIGINFO;
-    sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGSEGV, &sa, &ctx->old_sa_segv) != 0) {
-        fprintf(stderr, "[UFTA-PF] sigaction failed: %s\n", strerror(errno));
-        munmap(ctx->region_base, total_size);
-        close(ctx->vram_fd);
-        close(ctx->file_fd);
-        return -1;
+    /* Install SIGSEGV / VEH handler */
+#ifdef _WIN32
+    {
+        struct_sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_sigaction = NULL;  /* VEH doesn't need this, but signals the install */
+        if (sigaction(SIGSEGV, &sa, NULL) != 0) {
+            fprintf(stderr, "[UFTA-PF] VEH install failed\n");
+            munmap(ctx->region_base, total_size);
+            close(ctx->vram_fd);
+            close(ctx->file_fd);
+            return -1;
+        }
+        ctx->old_veh_handle = g_veh_handle;
     }
+#else
+    {
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_sigaction = pf_sigsegv_handler;
+        sa.sa_flags = SA_SIGINFO;
+        sigemptyset(&sa.sa_mask);
+        if (sigaction(SIGSEGV, &sa, &ctx->old_sa_segv) != 0) {
+            fprintf(stderr, "[UFTA-PF] sigaction failed: %s\n", strerror(errno));
+            munmap(ctx->region_base, total_size);
+            close(ctx->vram_fd);
+            close(ctx->file_fd);
+            return -1;
+        }
+    }
+#endif
 
     g_pf_ctx = ctx;
     ctx->active = true;
@@ -426,7 +472,11 @@ void pf_destroy(pf_context_t *ctx)
 
     /* Restore original SIGSEGV handler */
     if (ctx->active) {
+#ifdef _WIN32
+        RemoveVectoredExceptionHandler(ctx->old_veh_handle);
+#else
         sigaction(SIGSEGV, &ctx->old_sa_segv, NULL);
+#endif
         g_pf_ctx = NULL;
     }
 

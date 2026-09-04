@@ -40,10 +40,13 @@ GUI_TARGET   = uvm-gui
 
 # ── Default: CPU-only build ─────────────────────────────────────
 
-all: $(TARGET)
+all: $(TARGET) $(GUI_TARGET)
 
-$(TARGET): $(CORE_OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+# uvm (CLI) — usa a GUI real (SDL2) quando disponível
+$(TARGET): $(CORE_OBJECTS) $(BUILDDIR)/gui.o
+	$(CC) $(CFLAGS) $(GUI_CFLAGS) -o $@ \
+	    $(filter-out $(BUILDDIR)/gui_stub.o,$(CORE_OBJECTS)) \
+	    $(BUILDDIR)/gui.o $(LDFLAGS) $(GUI_LDFLAGS)
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -53,10 +56,13 @@ $(BUILDDIR):
 
 # ── GUI build (SDL2 + OpenGL) ───────────────────────────────────
 
-gui: $(CORE_OBJECTS) $(BUILDDIR)/gui.o
-	$(CC) $(CFLAGS) $(GUI_CFLAGS) -o $(GUI_TARGET) \
+# uvm-gui — binário dedicado com GUI
+$(GUI_TARGET): $(CORE_OBJECTS) $(BUILDDIR)/gui.o
+	$(CC) $(CFLAGS) $(GUI_CFLAGS) -o $@ \
 	    $(filter-out $(BUILDDIR)/gui_stub.o,$(CORE_OBJECTS)) \
 	    $(BUILDDIR)/gui.o $(LDFLAGS) $(GUI_LDFLAGS)
+
+gui: $(GUI_TARGET)
 
 $(BUILDDIR)/gui.o: $(SRCDIR)/gui.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(GUI_CFLAGS) -c -o $@ $<

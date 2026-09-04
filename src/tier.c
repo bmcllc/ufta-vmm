@@ -6,10 +6,10 @@
  */
 
 #include "ufta/tier.h"
+#include "ufta/platform.h"
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
-#include <unistd.h>
 
 /* ── Tier initialization ──────────────────────────────────────── */
 

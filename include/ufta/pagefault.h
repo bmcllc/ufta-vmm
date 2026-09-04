@@ -15,7 +15,7 @@
 #include "types.h"
 #include "tier.h"
 #include "worker.h"
-#include <signal.h>
+#include "platform.h"
 
 /* CUDA backend (only when compiled with nvcc) */
 #ifdef HAVE_CUDA_BACKEND
@@ -81,7 +81,11 @@ typedef struct {
 #endif
 
     /* Original signal handler */
+#ifdef _WIN32
+    void *old_veh_handle;   /* VEH handle for cleanup */
+#else
     struct sigaction old_sa_segv;
+#endif
 
     /* Statistics */
     uint64_t       total_faults;

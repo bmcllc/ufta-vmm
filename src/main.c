@@ -10,12 +10,10 @@
  */
 
 #include "ufta/ufta.h"
+#include "ufta/platform.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
-#include <getopt.h>
-#include <unistd.h>
 #include <time.h>
 #include "ufta/pagefault.h"
 
@@ -1510,7 +1508,6 @@ static int cmd_validate_intelligent(int argc, char **argv)
 /* ── Command: gui (real-time dashboard) ───────────────────────── */
 
 #include "ufta/gui.h"
-#include <pthread.h>
 
 /* Shared state between the pipeline thread and the GUI thread */
 typedef struct {

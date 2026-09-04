@@ -14,18 +14,65 @@
 #define _GNU_SOURCE
 #endif
 #include "ufta/worker.h"
+#include "ufta/platform.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <errno.h>
 #include <time.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
 #include <linux/futex.h>
 #include <sys/syscall.h>
 #include <sys/mman.h>
+#endif
 
 /* ── Futex helpers (lightweight thread suspension) ────────────── */
+
+#ifdef _WIN32
+/*
+ * Windows: use CONDITION_VARIABLE + shared CRITICAL_SECTION to emulate
+ * futex_wait / futex_wake.  The CRITICAL_SECTION is process-global
+ * (like the Linux futex hash table) — adequate for the low waiter
+ * count of the UFTA worker (≤256).
+ */
+static CRITICAL_SECTION g_futex_cs;
+static CONDITION_VARIABLE g_futex_cv;
+static BOOL g_futex_inited = FALSE;
+
+static void futex_ensure_init(void)
+{
+    if (!g_futex_inited) {
+        InitializeCriticalSection(&g_futex_cs);
+        InitializeConditionVariable(&g_futex_cv);
+        g_futex_inited = TRUE;
+    }
+}
+
+static int futex_wait(volatile uint32_t *addr, uint32_t expected)
+{
+    futex_ensure_init();
+    EnterCriticalSection(&g_futex_cs);
+    while (*addr == expected) {
+        SleepConditionVariableCS(&g_futex_cv, &g_futex_cs, INFINITE);
+    }
+    LeaveCriticalSection(&g_futex_cs);
+    return 0;
+}
+
+static int futex_wake(volatile uint32_t *addr, int n)
+{
+    (void)addr; (void)n;
+    futex_ensure_init();
+    WakeAllConditionVariable(&g_futex_cv);
+    return 0;
+}
+
+#else /* Linux */
 
 static int futex_wait(volatile uint32_t *addr, uint32_t expected)
 {
@@ -36,6 +83,8 @@ static int futex_wake(volatile uint32_t *addr, int n)
 {
     return syscall(SYS_futex, addr, FUTEX_WAKE, n, NULL, NULL, 0);
 }
+
+#endif /* _WIN32 */
 
 /* ── Ring buffer ──────────────────────────────────────────────── */
 

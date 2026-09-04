@@ -6,14 +6,11 @@
  */
 
 #include "ufta/validate.h"
+#include "ufta/platform.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 #include <math.h>
 
 /* ── High-resolution timing ───────────────────────────────────── */
@@ -53,7 +50,7 @@ int real_mem_alloc(real_mem_t *rm, const char *name, size_t size)
 void real_mem_free(real_mem_t *rm)
 {
     if (rm->ptr) {
-        free(rm->ptr);
+        ufta_aligned_free(rm->ptr);
         rm->ptr = NULL;
     }
     if (rm->fd >= 0) {
