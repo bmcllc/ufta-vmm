@@ -121,7 +121,10 @@ typedef enum {
     OP_BLACKHOLE   = (1 << 5),
     OP_WHITEHOLE   = (1 << 6),
     OP_VORTEX      = (1 << 7),
-    OP_WAVE        = (1 << 8)
+    OP_WAVE        = (1 << 8),
+    OP_REACTION_DIFFUSION = (1 << 9),
+    OP_ENTANGLEMENT      = (1 << 10),
+    OP_MEASUREMENT       = (1 << 11)
 } operator_type_t;
 
 /* ── Status codes ─────────────────────────────────────────────── */

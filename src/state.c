@@ -53,11 +53,21 @@ void motion_update(motion_t *m, const state_t *prev, const state_t *curr, real_t
         m->velocity = vec3_zero();
         m->speed    = 0.0;
         m->dir_predicted = curr->versor;
+        m->prev_velocity = vec3_zero();
+        m->acceleration = vec3_zero();
+        m->accel = 0.0;
         return;
     }
 
+    /* Store previous velocity for acceleration calculation */
+    m->prev_velocity = m->velocity;
+
     m->velocity = vec3_scale(vec3_sub(curr->raw, prev->raw), 1.0 / dt);
     m->speed    = vec3_norm(m->velocity);
+
+    /* Compute acceleration (Δv/Δt) */
+    m->acceleration = vec3_scale(vec3_sub(m->velocity, m->prev_velocity), 1.0 / dt);
+    m->accel = vec3_norm(m->acceleration);
 
     if (m->speed > 1e-12) {
         m->dir_predicted = vec3_normalize(m->velocity);

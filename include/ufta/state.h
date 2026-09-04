@@ -24,6 +24,10 @@ typedef struct {
     vec3_t   velocity;      /* v_p: dσ/dt                                */
     vec3_t   dir_predicted; /* d̂_p: predicted future direction          */
     real_t   speed;         /* ||v_p||                                   */
+    /* ── New fields for relativistic scheduler ───────────────────── */
+    vec3_t   prev_velocity; /* velocity at previous step (for accel) */
+    vec3_t   acceleration; /* a_p: d v / dt                            */
+    real_t   accel;          /* ||a_p||                                  */
 } motion_t;
 
 /* ── Heat level ───────────────────────────────────────────────── */

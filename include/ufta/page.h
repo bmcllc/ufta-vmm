@@ -37,6 +37,8 @@ typedef struct page {
     uint64_t   access_count;
     uint64_t   last_access_ts;
     uint64_t   migrate_count;
+    /* New field: time since last access (seconds) */
+    real_t     tau;           /* Δt since previous access */
 
     /* Back pointer to tier (set at runtime) */
     tier_t    *tier_ptr;

@@ -321,22 +321,22 @@ static void render_frame(gui_state_t *gs, const ufta_gui_snapshot_t *snap)
     /* VRAM recovered */
     char buf[64];
     snprintf(buf, sizeof(buf), "%.1f MB", snap->vram_recovered_mb);
-    draw_metric(20, cy, card_w, card_h, "VRAM Recuperada", buf, COL_GREEN);
+    draw_metric(20, cy, card_w, card_h, "VRAM Recovered", buf, COL_GREEN);
 
     /* Latency per fault */
     snprintf(buf, sizeof(buf), "%.1f us", snap->latency_us_per_fault);
-    draw_metric(30 + card_w, cy, card_w, card_h, "Latencia / Fault", buf,
+    draw_metric(30 + card_w, cy, card_w, card_h, "Latency / Fault", buf,
                 snap->latency_us_per_fault < 2.0 ? COL_GREEN : COL_YELLOW);
 
     /* FPS estimate */
     snprintf(buf, sizeof(buf), "%.0f FPS", snap->fps_estimate);
-    draw_metric(40 + 2 * card_w, cy, card_w, card_h, "Estabilidade FPS", buf,
+    draw_metric(40 + 2 * card_w, cy, card_w, card_h, "FPS Stability", buf,
                 snap->fps_estimate >= 55.0 ? COL_GREEN : COL_ORANGE);
 
     /* Pipeline cycle */
     snprintf(buf, sizeof(buf), "%.1f ms", snap->metrics ?
              snap->metrics->total_cycle_us / 1000.0 : 0.0);
-    draw_metric(50 + 3 * card_w, cy, card_w, card_h, "Ciclo Pipeline", buf,
+    draw_metric(50 + 3 * card_w, cy, card_w, card_h, "Pipeline Cycle", buf,
                 COL_ACCENT);
 
     /* ── Charts row ── */
@@ -344,18 +344,18 @@ static void render_frame(gui_state_t *gs, const ufta_gui_snapshot_t *snap)
     float chart_h = 160;
     float chart_w = (w - 60) / 2.0f;
 
-    draw_panel(20, chart_y, chart_w, chart_h, "Tempo de Ciclo (us)");
+    draw_panel(20, chart_y, chart_w, chart_h, "Cycle Time (µs)");
     draw_chart(30, chart_y + 30, chart_w - 20, chart_h - 40,
                gs->hist_cycle_us, gs->hist_count, COL_ACCENT, 2000.0f);
 
-    draw_panel(40 + chart_w, chart_y, chart_w, chart_h, "Latencia por Fault (us)");
+    draw_panel(40 + chart_w, chart_y, chart_w, chart_h, "Latency per Fault (µs)");
     draw_chart(50 + chart_w, chart_y + 30, chart_w - 20, chart_h - 40,
                gs->hist_latency_us, gs->hist_count, COL_GREEN, 10.0f);
 
     /* ── Tier utilization ── */
     float tier_y = chart_y + chart_h + 20;
     float tier_h = 120;
-    draw_panel(20, tier_y, w - 40, tier_h, "Utilizacao dos Tiers");
+    draw_panel(20, tier_y, w - 40, tier_h, "Tier Utilization");
 
     if (snap->tiers) {
         int n = snap->tiers->num_tiers;
@@ -379,7 +379,7 @@ static void render_frame(gui_state_t *gs, const ufta_gui_snapshot_t *snap)
     float stat_y = tier_y + tier_h + 20;
     float stat_h = h - stat_y - 20;
 
-    draw_panel(20, stat_y, (w - 60) / 2.0f, stat_h, "Migracao & Worker");
+    draw_panel(20, stat_y, (w - 60) / 2.0f, stat_h, "Migration & Worker");
 
     if (snap->migrate) {
         snprintf(buf, sizeof(buf), "Migracoes: %llu",

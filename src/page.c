@@ -131,6 +131,14 @@ void page_update_heat(page_t *p)
 
 void page_access(page_t *p, uint64_t timestamp)
 {
+    /* Compute time since last access (seconds) */
+    if (p->last_access_ts != 0) {
+        real_t delta = (real_t)(timestamp - p->last_access_ts) / 1e9; /* ns → s */
+        p->tau = delta;
+    } else {
+        p->tau = 0.0;
+    }
+
     p->access_count++;
     p->last_access_ts = timestamp;
 

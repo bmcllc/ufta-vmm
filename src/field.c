@@ -71,6 +71,23 @@ real_t op_vortex(vec3_t sigma, vec3_t force, real_t dt)
     return ds;
 }
 
+/* Entanglement: correlates sigma with force, returns a coupling term */
+real_t op_entanglement(vec3_t sigma, vec3_t force, real_t dt)
+{
+    /* Simple model: dot product scaled by dt */
+    real_t coupling = vec3_dot(sigma, force) * dt;
+    return coupling;
+}
+
+/* Measurement: collapses state, returns magnitude scaled */
+real_t op_measurement(vec3_t sigma, vec3_t force, real_t dt)
+{
+    (void)force;
+    real_t mag = vec3_norm(sigma);
+    /* Simulate observation by returning a fraction of magnitude */
+    return mag * 0.1 * dt;
+}
+
 /* Wave: propagating sinusoidal perturbation */
 real_t op_wave(vec3_t sigma, vec3_t force, real_t dt)
 {
@@ -90,6 +107,26 @@ real_t op_diffusion(vec3_t sigma, vec3_t force, real_t dt)
     real_t mag = vec3_norm(sigma);
     real_t target = 0.5; /* mean field value */
     return (target - mag) * 0.01 * dt;
+}
+
+/* Reaction‑Diffusion: simple activator‑inhibitor model */
+real_t op_reaction_diffusion(vec3_t sigma, vec3_t force, real_t dt)
+{
+    (void)force;
+    /* Use sigma magnitude as activator concentration u, and a fixed inhibitor v */
+    real_t u = vec3_norm(sigma);
+    real_t v = 0.3; /* constant inhibitor baseline */
+    /* Parameters */
+    const real_t Du = 0.01;   /* diffusion coefficient for u */
+    const real_t Dv = 0.005;  /* diffusion coefficient for v */
+    const real_t f = 0.04;    /* feed rate */
+    const real_t k = 0.06;    /* kill rate */
+    /* Gray‑Scott equations (simplified, no spatial laplacian) */
+    real_t du = Du * ( -u * v * v + f * (1.0 - u) );
+    real_t dv = Dv * (  u * v * v - (f + k) * v );
+    (void)dv; /* suppress unused warning */
+    /* Return net change in magnitude (activator) */
+    return du * dt;
 }
 
 /* Control: PID-like stabilization */
@@ -122,7 +159,10 @@ void field_engine_init(field_engine_t *fe)
     fe->operators[4] = operator_create(OP_WHITEHOLE, 0.3);
     fe->operators[5] = operator_create(OP_VORTEX,    0.2);
     fe->operators[6] = operator_create(OP_WAVE,      0.1);
-    fe->num_operators = 7;
+    fe->operators[7] = operator_create(OP_REACTION_DIFFUSION, 0.05);
+    fe->operators[8] = operator_create(OP_ENTANGLEMENT, 0.15);
+    fe->operators[9] = operator_create(OP_MEASUREMENT, 0.05);
+    fe->num_operators = 10;
 
     /* Add a default ambient field */
     fe->fields[0] = field_create(vec3_zero(), 0.1, 0.01);
@@ -208,6 +248,8 @@ operator_t operator_create(operator_type_t type, real_t strength)
         case OP_WHITEHOLE: op.apply = op_whitehole; break;
         case OP_VORTEX:    op.apply = op_vortex;    break;
         case OP_WAVE:      op.apply = op_wave;      break;
+        case OP_ENTANGLEMENT: op.apply = op_entanglement; break;
+        case OP_MEASUREMENT:  op.apply = op_measurement;  break;
         default:           op.apply = op_physics;    break;
     }
     /* No longer need heuristic mapping based on strength */

@@ -45,26 +45,37 @@ real_t lorentz_factor(real_t speed, real_t max_speed)
     return 1.0 / sqrt(1.0 - beta * beta);
 }
 
-/* Compute relativistic priority: P_i = γ_i · R_i · G_i - C_i */
+/* Estimate time until next access (seconds) based on current speed */
+real_t predicted_next_access(const pred_state_t *ps, real_t max_speed)
+{
+    (void)max_speed; /* suppress unused warning */
+    /* Use magnitude of last velocity as proxy for access rate */
+    real_t speed = vec3_norm(ps->last_velocity);
+    if (speed < 1e-12) return 1e6; /* very low speed → far future */
+    /* Inverse proportionality, scaled to seconds */
+    return 1.0 / (speed + 1e-12);
+}
+
+/* Compute relativistic priority: P_i = γ_i · R_i · G_i · H_i / (T_next + ε) - C_i */
 real_t relativistic_priority(const pred_state_t *ps, real_t heat, real_t max_speed)
 {
-    real_t gamma = lorentz_factor(ps->last_velocity.x, max_speed);
+    real_t speed_norm = vec3_norm(ps->last_velocity);
+    real_t gamma = lorentz_factor(speed_norm, max_speed);
     /* R_i: prediction reliability (confidence) */
     real_t R_i = ps->confidence;
     /* G_i: gain factor from prediction accuracy (inverse of error) */
     real_t G_i = 1.0 / (1.0 + ps->error_ema);
-    /* C_i: cost factor (temporal dilation for quiet pages) */
-    real_t C_i = 0.0;
-    /* Temporal dilation: quiet pages (low velocity) get dilated time */
-    real_t beta = ps->last_velocity.x / max_speed;
+    /* Temporal horizon */
+    real_t T_next = predicted_next_access(ps, max_speed);
+    /* Cost factor (temporal dilation for quiet pages) */
+    real_t beta = speed_norm / max_speed;
     if (beta < 0.0) beta = 0.0;
     if (beta > 0.9999) beta = 0.9999;
-    real_t time_dilation = 1.0 / lorentz_factor(ps->last_velocity.x, max_speed);
-    C_i = (1.0 - time_dilation) * 0.5; /* cost increases for slow pages */
+    real_t time_dilation = 1.0 / lorentz_factor(speed_norm, max_speed);
+    real_t C_i = (1.0 - time_dilation) * 0.5;
 
-    /* Relativistic priority: P_i = γ_i · R_i · G_i · H_i - C_i */
-    /* Heat (H_i) modulates the priority — hot pages get amplified */
-    return gamma * R_i * G_i * heat - C_i;
+    /* Final priority */
+    return (gamma * R_i * G_i * heat) / (T_next + 1e-6) - C_i;
 }
 
 /* ── Predictor initialization ─────────────────────────────────── */

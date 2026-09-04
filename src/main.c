@@ -94,8 +94,51 @@ static int cmd_create(int argc, char **argv)
     return 0;
 }
 
-/* ── Command: demo ────────────────────────────────────────────── */
+/* ── Command: benchmark-field ─────────────────────────────────────── */
 
+static int cmd_benchmark_field(int argc, char **argv)
+{
+    (void)argc; (void)argv;
+    printf("\nBenchmarking Field Engine Operators...\n");
+
+    /* Minimal setup */
+    tier_registry_t tiers;
+    tier_registry_init_defaults(&tiers);
+
+    page_table_t pages;
+    page_table_init(&pages, 1);
+
+    addr_map_t addr_map;
+    addr_map_init(&addr_map, 1, UFTA_PAGE_SIZE_DEFAULT);
+
+    field_engine_t field;
+    field_engine_init(&field);
+
+    /* Create a single demo page (RAM tier) */
+    page_t *p = page_alloc(&pages, UFTA_PAGE_SIZE_DEFAULT, &tiers.tiers[0]);
+    if (!p) {
+        fprintf(stderr, "Failed to allocate demo page for benchmark\n");
+        return 1;
+    }
+    addr_map_insert(&addr_map, p);
+
+    const int iterations = 10000;
+    uint64_t t0 = now_ns();
+    for (int i = 0; i < iterations; i++) {
+        field_engine_apply(&field, &p->state, 0.016); /* dt ~16ms */
+    }
+    uint64_t t1 = now_ns();
+    double secs = (t1 - t0) / 1e9;
+    printf("Field benchmark: %d iterations in %.3f s (%.3f µs per tick)\n",
+           iterations, secs, secs * 1e6 / iterations);
+
+    /* Cleanup */
+    free(pages.pages);
+    free(addr_map.entries);
+    return 0;
+}
+
+/* ── Command: demo ────────────────────────────────────────────── */
 static int cmd_demo(int argc, char **argv)
 {
     (void)argc; (void)argv;
@@ -1761,6 +1804,8 @@ int main(int argc, char **argv)
         return cmd_pagefault_cuda(new_argc - 1, new_argv + 1);
     if (strcmp(cmd, "validate-intelligent") == 0)
         return cmd_validate_intelligent(new_argc - 1, new_argv + 1);
+    if (strcmp(cmd, "benchmark-field") == 0)
+        return cmd_benchmark_field(new_argc - 1, new_argv + 1);
     if (strcmp(cmd, "gui") == 0)
         return cmd_gui(new_argc - 1, new_argv + 1);
     if (strcmp(cmd, "help") == 0 || strcmp(cmd, "--help") == 0) {
